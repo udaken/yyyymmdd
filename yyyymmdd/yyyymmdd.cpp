@@ -41,6 +41,8 @@ static const std::nullptr_t& nullptr = std::nullptr;
 #endif
 
 #define MAX_LOADSTRING 100
+#define WM_NOTIFYICON (WM_USER+100)
+#define NOTIFY_UID 1
 
 // グローバル変数:
 HINSTANCE hInst;                                // 現在のインターフェイス
@@ -52,7 +54,29 @@ static ATOM                MyRegisterClass(HINSTANCE hInstance);
 static BOOL                InitInstance(HINSTANCE, int);
 static LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 
-#if 0
+BOOL AddNotifyIcon(HWND hWnd, unsigned int uID) {
+	NOTIFYICONDATA nid = {};
+
+	nid.cbSize = sizeof(nid);
+	nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+	nid.hWnd = hWnd;
+	nid.uID = uID;
+	nid.uCallbackMessage = WM_NOTIFYICON;
+	nid.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_YYYYMMDD));
+	_tcscpy(nid.szTip, TEXT("YYYYMMDD"));
+
+	return Shell_NotifyIcon(NIM_ADD, &nid);
+}
+void DeleteNotifyIcon(HWND hWnd, unsigned int uID) {
+	NOTIFYICONDATA nid = {};
+
+	nid.cbSize = sizeof(nid);
+	nid.hWnd = hWnd;
+	nid.uID = uID;
+
+	Shell_NotifyIcon(NIM_DELETE, &nid);
+}
+#if 1
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -107,7 +131,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
 	wcex.hInstance = hInstance;
-	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDC_YYYYMMDD));
+	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_YYYYMMDD));
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	wcex.lpszMenuName = nullptr;
@@ -143,6 +167,11 @@ BOOL InitInstance(HINSTANCE hInstance, int /*nCmdShow*/)
 	}
 
 	if (!RegisterHotKey(hWnd, hotkeyId, MOD_CONTROL | MOD_ALT, VK_OEM_PLUS))
+	{
+		return FALSE;
+	}
+
+	if (!AddNotifyIcon(hWnd, NOTIFY_UID))
 	{
 		return FALSE;
 	}
@@ -201,9 +230,11 @@ static std::wstring getModuleName()
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	static UINT s_uTaskbarRestart;
 	switch (message)
 	{
 	case WM_CREATE:
+		s_uTaskbarRestart = RegisterWindowMessage(TEXT("TaskbarCreated"));
 		break;
 	case WM_HOTKEY:
 		if (wParam == hotkeyId)
@@ -255,8 +286,33 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 	case WM_DESTROY:
 		UnregisterHotKey(hWnd, hotkeyId);
+		DeleteNotifyIcon(hWnd, NOTIFY_UID);
 		PostQuitMessage(0);
 		return 0;
+	case WM_NOTIFYICON:
+		switch (lParam) {
+		case WM_RBUTTONDOWN:
+			POINT pt;
+			GetCursorPos(&pt);
+			HMENU menu = LoadMenu(hInst, MAKEINTRESOURCE(IDR_MENU1));
+			TrackPopupMenu(GetSubMenu(menu, 0), TPM_LEFTALIGN, pt.x, pt.y, NULL, hWnd, NULL);
+			DestroyMenu(menu);
+			break;
+		}
+		break;
+	case WM_COMMAND:
+		switch (LOWORD(wParam))
+		{
+		case ID_ROOT_EXIT:
+			DestroyWindow(hWnd);
+		default:
+			break;
+		}
+		break;
+	default:
+		if(message == s_uTaskbarRestart)
+			AddNotifyIcon(hWnd, NOTIFY_UID);
+		break;
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
