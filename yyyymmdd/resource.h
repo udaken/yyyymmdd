@@ -2,13 +2,10 @@
 // Microsoft Visual C++ で生成されたインクルード ファイル。
 // yyyymmdd.rc で使用
 //
-#define IDC_MYICON                      2
-#define IDD_YYYYMMDD_DIALOG             102
 #define IDS_APP_TITLE                   103
 #define IDI_YYYYMMDD                    107
 #define IDI_SMALL                       108
 #define IDC_YYYYMMDD                    109
-#define IDR_MAINFRAME                   128
 #define IDR_MENU1                       129
 #define ID_ROOT_EXIT                    32771
 #define IDC_STATIC                      -1
